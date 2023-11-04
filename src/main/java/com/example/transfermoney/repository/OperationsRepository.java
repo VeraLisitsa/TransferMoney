@@ -1,6 +1,7 @@
 package com.example.transfermoney.repository;
 
 import com.example.transfermoney.entity.Operation;
+import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -9,13 +10,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Repository
+@NoArgsConstructor
 public class OperationsRepository {
 
     private final ConcurrentHashMap<String, Operation> operationsList = new ConcurrentHashMap<>();
 
-
-    public OperationsRepository() {
-    }
 
     public List<Operation> allOperations() {
         List<Operation> list = operationsList.values().stream()

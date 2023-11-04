@@ -8,6 +8,8 @@ import com.example.transfermoney.exception.ErrorInputDataException;
 import com.example.transfermoney.exception.ErrorTransferException;
 import com.example.transfermoney.repository.CardRepository;
 import com.example.transfermoney.repository.OperationsRepository;
+import com.example.transfermoney.util.Logger;
+import com.example.transfermoney.util.MappingDto;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,9 +24,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.stream.Stream;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
+import static org.mockito.Mockito.*;
 
 public class OperationServiceTest {
 
@@ -33,12 +33,14 @@ public class OperationServiceTest {
     private OperationsRepository operationsRepository;
     @Mock
     private Logger logger;
-    @Mock
+
     private Operation operation;
     @Mock
     private CreditCard creditCardFrom;
     @Mock
     private CreditCard creditCardTo;
+    @Mock
+    private MappingDto mappingDto;
     @InjectMocks
     private OperationService operationService;
 
@@ -47,16 +49,10 @@ public class OperationServiceTest {
         MockitoAnnotations.initMocks(this);
         cardRepository = new CardRepository();
 
-        operationService = new OperationService(cardRepository, operationsRepository, logger);
+        operationService = new OperationService(cardRepository, operationsRepository, logger, mappingDto);
 
-        when(operation.getCardFromNumber()).thenReturn("1111222233334444");
-        when(operation.getCardFromValidTill()).thenReturn("12/24");
-        when(operation.getCardFromCVV()).thenReturn("111");
-        when(operation.getCardToNumber()).thenReturn("5555666677778888");
-        when(operation.getAmount()).thenReturn(new Amount(500000, "rub"));
-        when(operation.getStatus()).thenReturn(OperationStatus.WAITING_CONFIRMATION);
-        when(operation.getCommission()).thenReturn(50.0);
-        when(operation.getId()).thenReturn("1");
+        operation = new Operation("1111222233334444", "12/24", "111", "5555666677778888", new Amount(0, ""));
+
 
     }
 
@@ -64,6 +60,7 @@ public class OperationServiceTest {
     protected void afterEach() {
         cardRepository = null;
         operationService = null;
+        operation = null;
     }
 
 
@@ -129,8 +126,10 @@ public class OperationServiceTest {
         when(creditCardFrom.getBalance()).thenReturn(10000.0);
 
         operationService.transferMoney(creditCardFrom, creditCardTo, operation);
+        OperationStatus expected = OperationStatus.WAITING_CONFIRMATION;
+        OperationStatus actual = operation.getStatus();
+        Assertions.assertEquals(expected, actual);
 
-        Mockito.verify(operation, Mockito.times(1)).setStatus(Mockito.any());
     }
 
     @Test
@@ -147,20 +146,26 @@ public class OperationServiceTest {
 
     @Test
     protected void operationHandlerTest() {
-        when(logger.writeToLoggerFile(Mockito.any())).thenReturn(true);
-        when(operationsRepository.addOperation(Mockito.any())).thenReturn(true);
 
-        String expected = "1";
-        String actual = operationService.operationHandler(operation);
+        operationService.operationHandler(operation);
 
-        Assertions.assertEquals(expected, actual);
+        verify(mappingDto, Mockito.times(1)).operationToDto(operation);
     }
 
     @Test
     protected void messageForLoggerTest() {
+        Operation operation2 = Mockito.mock(Operation.class);
+        when(operation2.getCardFromNumber()).thenReturn("1111222233334444");
+        when(operation2.getCardFromValidTill()).thenReturn("12/24");
+        when(operation2.getCardFromCVV()).thenReturn("111");
+        when(operation2.getCardToNumber()).thenReturn("5555666677778888");
+        when(operation2.getAmount()).thenReturn(new Amount(500000, "rub"));
+        when(operation2.getStatus()).thenReturn(OperationStatus.WAITING_CONFIRMATION);
+        when(operation2.getCommission()).thenReturn(50.0);
+        when(operation2.getId()).thenReturn("1");
 
         String expected = "CreditCardFrom=1111222233334444,CreditCardTo=5555666677778888,Amount=5000rub,Commission=50.0,Operationstatus=WAITING_CONFIRMATION";
-        String actual = operationService.messageForLogger(operation).replaceAll(" ", "").replaceAll("\r\n", "");
+        String actual = operationService.messageForLogger(operation2).replaceAll(" ", "").replaceAll("\r\n", "");
 
         Assertions.assertEquals(expected, actual.substring(actual.length() - expected.length()));
     }

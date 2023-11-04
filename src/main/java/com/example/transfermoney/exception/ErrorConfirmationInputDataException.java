@@ -1,9 +1,9 @@
 package com.example.transfermoney.exception;
 
-public class ErrorConfirmationInputDataException extends RuntimeException {
+import lombok.NoArgsConstructor;
 
-    public ErrorConfirmationInputDataException() {
-    }
+@NoArgsConstructor
+public class ErrorConfirmationInputDataException extends RuntimeException {
 
     public ErrorConfirmationInputDataException(String message) {
         super(message);

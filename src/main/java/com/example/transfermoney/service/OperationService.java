@@ -1,5 +1,6 @@
 package com.example.transfermoney.service;
 
+import com.example.transfermoney.dto.OperationDto;
 import com.example.transfermoney.entity.CreditCard;
 import com.example.transfermoney.entity.Operation;
 import com.example.transfermoney.entity.OperationStatus;
@@ -7,14 +8,16 @@ import com.example.transfermoney.exception.ErrorInputDataException;
 import com.example.transfermoney.exception.ErrorTransferException;
 import com.example.transfermoney.repository.CardRepository;
 import com.example.transfermoney.repository.OperationsRepository;
+import com.example.transfermoney.util.Logger;
+import com.example.transfermoney.util.MappingDto;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
+
 public class OperationService {
+    private final MappingDto mappingDto;
     private final CardRepository cardRepository;
     private final OperationsRepository operationsRepository;
     private final Logger logger;
@@ -23,23 +26,26 @@ public class OperationService {
 
     private final AtomicLong count = new AtomicLong(0);
 
-    public OperationService(CardRepository cardRepository, OperationsRepository operationsRepository, Logger logger) {
+    public OperationService(CardRepository cardRepository, OperationsRepository operationsRepository, Logger logger, MappingDto mappingDto) {
         this.cardRepository = cardRepository;
         this.operationsRepository = operationsRepository;
         this.logger = logger;
+        this.mappingDto = mappingDto;
     }
 
-    public String operationHandler(Operation operation) {
+    public OperationDto operationHandler(Operation operation) {
+        logger.createLogFile();
         try {
             long id = count.incrementAndGet();
-            operation.setId(Long.toString(id));
+            String operationId = "A" + id;
+            operation.setId(operationId);
             operationsRepository.addOperation(operation);
             operation.setDateOperation();
             operation.setTimeOperation();
             CreditCard creditCardFrom = getCreditCardFrom(operation);
             CreditCard getCreditCardTo = getCreditCardTo(operation);
             transferMoney(creditCardFrom, getCreditCardTo, operation);
-            return operation.getId();
+            return mappingDto.operationToDto(operation);
         } finally {
             logger.writeToLoggerFile(messageForLogger(operation));
         }
@@ -54,11 +60,11 @@ public class OperationService {
                 return creditCardFrom;
             } else {
                 operation.setStatus(OperationStatus.ERROR_INVALID_REQUISITES);
-                throw new ErrorInputDataException();
+                throw new ErrorInputDataException("Error input data");
             }
         } else {
             operation.setStatus(OperationStatus.ERROR_INVALID_REQUISITES);
-            throw new ErrorInputDataException();
+            throw new ErrorInputDataException("Error input data");
         }
     }
 
@@ -68,7 +74,7 @@ public class OperationService {
             return cardRepository.getByNumber(operation.getCardToNumber()).get();
         } else {
             operation.setStatus(OperationStatus.ERROR_INVALID_REQUISITES);
-            throw new ErrorInputDataException();
+            throw new ErrorInputDataException("Error input data");
         }
 
     }
@@ -85,7 +91,7 @@ public class OperationService {
             operation.setStatus(OperationStatus.WAITING_CONFIRMATION);
         } else {
             operation.setStatus(OperationStatus.ERROR_INSUFFICIENT_FUNDS_ON_CARD);
-            throw new ErrorTransferException();
+            throw new ErrorTransferException("Error transfer");
         }
     }
 
@@ -96,8 +102,7 @@ public class OperationService {
     }
 
     protected String messageForLogger(Operation operation) {
-        return "[" + DateTimeFormatter.ofPattern("dd-MM-yyyy, kk:mm:ss")
-                .format(LocalDateTime.now()) + "] Operation id = " + operation.getId() +
+        return " Operation id = " + operation.getId() +
                 ", Operation date = " + operation.getDateOperation() +
                 ", Operation time = " + operation.getTimeOperation() +
                 ", Credit Card From = " + operation.getCardFromNumber() +
@@ -108,7 +113,4 @@ public class OperationService {
                 ", Operation status = " + operation.getStatus();
     }
 
-    protected AtomicLong getCount() {
-        return count;
-    }
 }

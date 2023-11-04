@@ -6,6 +6,8 @@ import com.example.transfermoney.entity.OperationStatus;
 import com.example.transfermoney.exception.ErrorConfirmationException;
 import com.example.transfermoney.exception.ErrorConfirmationInputDataException;
 import com.example.transfermoney.repository.OperationsRepository;
+import com.example.transfermoney.util.Logger;
+import com.example.transfermoney.util.MappingDto;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +19,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.Optional;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ConfirmationServiceTest {
@@ -28,32 +31,34 @@ public class ConfirmationServiceTest {
     private Logger logger;
     @Mock
     private Operation operation;
-
     @Mock
+    private MappingDto mappingDto;
+
+
     private Confirmation confirmation;
 
     @BeforeEach
     protected void beforeEach() {
         MockitoAnnotations.initMocks(this);
-        confirmationService = new ConfirmationService(operationsRepository, logger);
+        confirmationService = new ConfirmationService(operationsRepository, logger, mappingDto);
+        confirmation = new Confirmation("A1", "0000");
     }
 
     @AfterEach
     protected void afterEach() {
         confirmationService = null;
+        confirmation = null;
     }
 
     @Test
     protected void confirmOperationTest_sucess() {
 
-        when(confirmation.getOperationId()).thenReturn("1");
-        when(confirmation.getCode()).thenReturn("0000");
         when(operationsRepository.getById(Mockito.any())).thenReturn(Optional.ofNullable(operation));
         when(operation.getSecretCode()).thenReturn("0000");
+        when(operation.getStatus()).thenReturn(OperationStatus.WAITING_CONFIRMATION);
 
-        String expected = "1";
-        String actual = confirmationService.confirmOperation(confirmation);
-        Assertions.assertEquals(expected, actual);
+        confirmationService.confirmOperation(confirmation);
+        verify(mappingDto, Mockito.times(1)).operationToDto(Mockito.any());
 
     }
 
@@ -70,9 +75,9 @@ public class ConfirmationServiceTest {
     @Test
     protected void confirmOperationTest_errorConfirmationInputDataException() {
 
-        when(confirmation.getCode()).thenReturn("0000");
         when(operationsRepository.getById(Mockito.any())).thenReturn(Optional.ofNullable(operation));
         when(operation.getSecretCode()).thenReturn("0001");
+        when(operation.getStatus()).thenReturn(OperationStatus.WAITING_CONFIRMATION);
 
         Class<ErrorConfirmationInputDataException> expected = ErrorConfirmationInputDataException.class;
         Assertions.assertThrows(expected, () -> confirmationService.confirmOperation(confirmation));

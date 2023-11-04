@@ -14,6 +14,7 @@ public class CardRepositoryTest {
     @BeforeEach
     protected void beforeEach() {
         cardRepository = new CardRepository();
+
     }
 
     @AfterEach
@@ -48,5 +49,15 @@ public class CardRepositoryTest {
         int actual = cardRepository.allCreditCards().size();
 
         Assertions.assertEquals(expected, actual);
+    }
+
+    @Test
+    protected void addCreditCardTest() {
+        int expected = 3;
+        cardRepository.addCreditCard(new CreditCard("2222111122223333", "12/25", "222", 1000));
+        int actual = cardRepository.allCreditCards().size();
+
+        Assertions.assertEquals(expected, actual);
+
     }
 }
